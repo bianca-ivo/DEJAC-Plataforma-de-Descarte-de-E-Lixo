@@ -69,7 +69,7 @@ Ao acessar a aplicação, é possível obter informações relacionadas ao ender
       <img src="imagens/Rodolfo.jpg" alt="Rodolfo" style="width: 100px; height: auto;">
       <p><a href="https://www.linkedin.com/in/rodolfo-almeida-8a1790176/?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app">Rodolfo de Almeida Santos</p>
       <td align="center">
-      <p><a href="https://www.linkedin.com/in/rodolfo-almeida-8a1790176/?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app">Tulio Bitencourt de Piava</p>
+      <p><a href="https://www.linkedin.com/in/rodolfo-almeida-8a1790176/?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app">Tulio Bitencourt de Paiva</p>
     </td>
   </tr>
 </table>
