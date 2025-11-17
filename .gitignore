@@ -1,0 +1,3 @@
+
+Remove-Item -Recurse -Force .git\modules\frontend
+firebase-service-account.json
