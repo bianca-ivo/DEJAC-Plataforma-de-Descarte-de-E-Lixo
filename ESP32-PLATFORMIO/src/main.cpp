@@ -1,144 +1,404 @@
-#include <WiFi.h>
 #include "esp_camera.h"
+#include <WiFi.h>
 #include "esp_http_server.h"
-#include <ArduinoJson.h>
-#include <vector>
-#include "extract_features.h" // Seu arquivo extract_features.cpp
 
-// ===== WIFI =====
+// ========================================
+// WIFI
+// ========================================
+
 const char* ssid = "dlink-71CF";
 const char* password = "mvrqh89498";
 
-// ===== CLASSIFY ENDPOINT =====
-static esp_err_t classify_handler(httpd_req_t *req) {
-    camera_fb_t *fb = esp_camera_fb_get();
-    if (!fb) {
-        httpd_resp_send_500(req);
-        return ESP_FAIL;
-    }
+// ========================================
+// AI THINKER ESP32-CAM
+// ========================================
 
-    std::vector<float> features = extract_features_from_frame(fb);
-    esp_camera_fb_return(fb);
+#define PWDN_GPIO_NUM     32
+#define RESET_GPIO_NUM    -1
+#define XCLK_GPIO_NUM      0
 
-    StaticJsonDocument<256> doc;
-    JsonArray arr = doc["features"].to<JsonArray>();
-    for (float v : features) arr.add(v);
+#define SIOD_GPIO_NUM     26
+#define SIOC_GPIO_NUM     27
 
-    String json;
-    serializeJson(doc, json);
+#define Y9_GPIO_NUM       35
+#define Y8_GPIO_NUM       34
+#define Y7_GPIO_NUM       39
+#define Y6_GPIO_NUM       36
+#define Y5_GPIO_NUM       21
+#define Y4_GPIO_NUM       19
+#define Y3_GPIO_NUM       18
+#define Y2_GPIO_NUM        5
 
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, json.c_str(), json.length());
+#define VSYNC_GPIO_NUM    25
+#define HREF_GPIO_NUM     23
+#define PCLK_GPIO_NUM     22
 
-    return ESP_OK;
-}
+// ========================================
+// STREAM HANDLER
+// ========================================
 
-// ===== STREAM ENDPOINT =====
 static esp_err_t stream_handler(httpd_req_t *req) {
-    camera_fb_t *fb = NULL;
+
+    camera_fb_t * fb = NULL;
     esp_err_t res = ESP_OK;
     char part_buf[64];
 
-    res = httpd_resp_set_type(req, "multipart/x-mixed-replace; boundary=frame");
-    if (res != ESP_OK) return res;
+    res = httpd_resp_set_type(
+        req,
+        "multipart/x-mixed-replace; boundary=frame"
+    );
+
+    if (res != ESP_OK) {
+        return res;
+    }
 
     while (true) {
+
         fb = esp_camera_fb_get();
+
         if (!fb) {
+
             Serial.println("Erro ao capturar frame");
+
             continue;
         }
 
-        size_t hlen = snprintf(part_buf, 64,
-            "--frame\r\nContent-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n",
-            (unsigned int)fb->len);
-        res = httpd_resp_send_chunk(req, part_buf, hlen);
-        if (res != ESP_OK) {
-            esp_camera_fb_return(fb);
-            break;
+        size_t hlen = snprintf(
+            part_buf,
+            sizeof(part_buf),
+
+            "--frame\r\n"
+            "Content-Type: image/jpeg\r\n"
+            "Content-Length: %u\r\n\r\n",
+
+            fb->len
+        );
+
+        res = httpd_resp_send_chunk(
+            req,
+            part_buf,
+            hlen
+        );
+
+        if (res == ESP_OK) {
+
+            res = httpd_resp_send_chunk(
+                req,
+                (const char *)fb->buf,
+                fb->len
+            );
         }
 
-        res = httpd_resp_send_chunk(req, (const char *)fb->buf, fb->len);
+        if (res == ESP_OK) {
+
+            res = httpd_resp_send_chunk(
+                req,
+                "\r\n",
+                2
+            );
+        }
+
         esp_camera_fb_return(fb);
-        if (res != ESP_OK) break;
+
+        if (res != ESP_OK) {
+
+            Serial.println("Cliente desconectado");
+
+            break;
+        }
     }
 
     return res;
 }
 
-// ===== START SERVER =====
-void startServer() {
-    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+// ========================================
+// CAMERA JPG
+// ========================================
+
+static esp_err_t capture_handler(httpd_req_t *req) {
+
+    camera_fb_t * fb = NULL;
+
+    fb = esp_camera_fb_get();
+
+    if (!fb) {
+
+        Serial.println("Erro ao capturar imagem");
+
+        httpd_resp_send_500(req);
+
+        return ESP_FAIL;
+    }
+
+    httpd_resp_set_type(req, "image/jpeg");
+
+    httpd_resp_set_hdr(
+        req,
+        "Access-Control-Allow-Origin",
+        "*"
+    );
+
+    esp_err_t res = httpd_resp_send(
+        req,
+        (const char *)fb->buf,
+        fb->len
+    );
+
+    esp_camera_fb_return(fb);
+
+    return res;
+}
+
+// ========================================
+// START SERVER
+// ========================================
+
+void startCameraServer() {
+
+    httpd_config_t config =
+        HTTPD_DEFAULT_CONFIG();
+
     config.server_port = 80;
 
     httpd_handle_t server = NULL;
-    httpd_start(&server, &config);
 
-    httpd_uri_t classify_uri = {
-        .uri = "/classify",
-        .method = HTTP_GET,
-        .handler = classify_handler
-    };
-    httpd_register_uri_handler(server, &classify_uri);
+    // ==========================
+    // STREAM
+    // ==========================
 
     httpd_uri_t stream_uri = {
+
         .uri = "/stream",
         .method = HTTP_GET,
-        .handler = stream_handler
+        .handler = stream_handler,
+        .user_ctx = NULL
     };
-    httpd_register_uri_handler(server, &stream_uri);
+
+    // ==========================
+    // CAPTURE
+    // ==========================
+
+    httpd_uri_t capture_uri = {
+
+        .uri = "/capture",
+        .method = HTTP_GET,
+        .handler = capture_handler,
+        .user_ctx = NULL
+    };
+
+    // ==========================
+    // START
+    // ==========================
+
+    if (httpd_start(
+            &server,
+            &config
+        ) == ESP_OK) {
+
+        httpd_register_uri_handler(
+            server,
+            &stream_uri
+        );
+
+        httpd_register_uri_handler(
+            server,
+            &capture_uri
+        );
+
+        Serial.println(
+            "Servidor iniciado com sucesso"
+        );
+
+    } else {
+
+        Serial.println(
+            "Erro ao iniciar servidor"
+        );
+    }
 }
 
-// ===== CAMERA INIT =====
+// ========================================
+// SETUP
+// ========================================
+
 void setup() {
+
     Serial.begin(115200);
 
+    delay(3000);
+
+    Serial.println();
+    Serial.println(
+        "Iniciando ESP32-CAM..."
+    );
+
+    // ========================================
+    // CAMERA CONFIG
+    // ========================================
+
     camera_config_t config;
-    config.ledc_channel = LEDC_CHANNEL_0;
-    config.ledc_timer = LEDC_TIMER_0;
 
-    config.pin_d0 = 5;
-    config.pin_d1 = 18;
-    config.pin_d2 = 19;
-    config.pin_d3 = 21;
-    config.pin_d4 = 36;
-    config.pin_d5 = 39;
-    config.pin_d6 = 34;
-    config.pin_d7 = 35;
+    config.ledc_channel =
+        LEDC_CHANNEL_0;
 
-    config.pin_xclk = 0;
-    config.pin_pclk = 22;
-    config.pin_vsync = 25;
-    config.pin_href = 23;
-    config.pin_sccb_sda = 26;
-    config.pin_sccb_scl = 27;
-    config.pin_pwdn = 32;
-    config.pin_reset = -1;
+    config.ledc_timer =
+        LEDC_TIMER_0;
 
-    config.xclk_freq_hz = 20000000;
-    config.pixel_format = PIXFORMAT_JPEG;
+    config.pin_d0 = Y2_GPIO_NUM;
+    config.pin_d1 = Y3_GPIO_NUM;
+    config.pin_d2 = Y4_GPIO_NUM;
+    config.pin_d3 = Y5_GPIO_NUM;
+    config.pin_d4 = Y6_GPIO_NUM;
+    config.pin_d5 = Y7_GPIO_NUM;
+    config.pin_d6 = Y8_GPIO_NUM;
+    config.pin_d7 = Y9_GPIO_NUM;
 
-    config.frame_size = FRAMESIZE_QQVGA;
-    config.jpeg_quality = 20;
-    config.fb_count = 2;
+    config.pin_xclk =
+        XCLK_GPIO_NUM;
 
-    if (esp_camera_init(&config) != ESP_OK) {
-        Serial.println("Erro ao inicializar a câmera!");
+    config.pin_pclk =
+        PCLK_GPIO_NUM;
+
+    config.pin_vsync =
+        VSYNC_GPIO_NUM;
+
+    config.pin_href =
+        HREF_GPIO_NUM;
+
+    config.pin_sccb_sda =
+        SIOD_GPIO_NUM;
+
+    config.pin_sccb_scl =
+        SIOC_GPIO_NUM;
+
+    config.pin_pwdn =
+        PWDN_GPIO_NUM;
+
+    config.pin_reset =
+        RESET_GPIO_NUM;
+
+    config.xclk_freq_hz =
+        20000000;
+
+    config.pixel_format =
+        PIXFORMAT_JPEG;
+
+    // ========================================
+    // QUALIDADE DA CAMERA
+    // ========================================
+
+    if (psramFound()) {
+
+        Serial.println("PSRAM OK");
+
+        config.frame_size =
+            FRAMESIZE_VGA;
+
+        config.jpeg_quality = 10;
+
+        config.fb_count = 2;
+
+    } else {
+
+        Serial.println(
+            "PSRAM não encontrada"
+        );
+
+        config.frame_size =
+            FRAMESIZE_QVGA;
+
+        config.jpeg_quality = 15;
+
+        config.fb_count = 1;
+    }
+
+    // ========================================
+    // INIT CAMERA
+    // ========================================
+
+    esp_err_t err =
+        esp_camera_init(&config);
+
+    if (err != ESP_OK) {
+
+        Serial.printf(
+            "Erro ao iniciar camera: 0x%x\n",
+            err
+        );
+
         return;
     }
 
+    Serial.println("Camera OK");
+
+    sensor_t * s = esp_camera_sensor_get();
+
+    s->set_brightness(s, 1);
+    s->set_contrast(s, 1);
+    s->set_saturation(s, 0);
+    s->set_framesize(s, FRAMESIZE_VGA);
+
+    // ========================================
+    // WIFI
+    // ========================================
+
     WiFi.begin(ssid, password);
+
+    Serial.print(
+        "Conectando ao WiFi"
+    );
+
     while (WiFi.status() != WL_CONNECTED) {
-        delay(300);
+
+        delay(500);
+
         Serial.print(".");
     }
 
-    Serial.println("\nWiFi conectado!");
-    Serial.println("IP do ESP32: " + WiFi.localIP().toString());
+    Serial.println();
+    Serial.println(
+        "WiFi conectado!"
+    );
 
-    startServer();
+    Serial.print("IP da camera: ");
+
+    Serial.println(WiFi.localIP());
+
+    // ========================================
+    // START SERVER
+    // ========================================
+
+    startCameraServer();
+
+    Serial.println();
+    Serial.println(
+        "================================="
+    );
+
+    Serial.println("STREAM:");
+
+    Serial.print("http://");
+    Serial.print(WiFi.localIP());
+    Serial.println("/stream");
+
+    Serial.println();
+
+    Serial.println("CAPTURE:");
+
+    Serial.print("http://");
+    Serial.print(WiFi.localIP());
+    Serial.println("/capture");
+
+    Serial.println(
+        "================================="
+    );
 }
 
+// ========================================
+// LOOP
+// ========================================
+
 void loop() {
-    // Nada aqui, tudo é feito via endpoints
+
+    delay(1);
 }

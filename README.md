@@ -42,6 +42,9 @@ Ao acessar a aplicação, é possível obter informações relacionadas ao ender
 - NodeJS
 - React
 - PlatformIO
+- Teachable Machine
+- Firebase
+- Módulo ESP32-CAM
 
 <div align="center">
 
@@ -54,23 +57,25 @@ Ao acessar a aplicação, é possível obter informações relacionadas ao ender
       <p>Bianca Pacheco Ivo</p>
     </td>
     <td align="center">
-      <img src="imagens/Bruno_Gabriel.jpg" alt="Bruno Gabriel" style="width: 100px; height: auto;">
-      <p><a href="https://github.com/Brun0Gabriel">Bruno Gabriel de Padua Martins</a></p>
+      <p>Fernando Borges da Silva</p>
     </td>
-    <td align="center">
-      <img src="imagens/Bruno_Malvao.jpg" alt="Bruno Malvão" style="width: 100px; height: auto;">
-      <p><a href="https://www.linkedin.com/in/brunoaraujom/?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app">Bruno Araújo Malvão</p>
-    </td>
-    <td align="center">
+     <td align="center">
       <img src="imagens/Isaias.jpg" alt="Isaias" style="width: 100px; height: auto;">
       <p><a href="https://www.linkedin.com/in/isaias-menezes-silva/">Isaias Menezes Silva</a></p>
     </td>
     <td align="center">
-      <img src="imagens/Rodolfo.jpg" alt="Rodolfo" style="width: 100px; height: auto;">
-      <p><a href="https://www.linkedin.com/in/rodolfo-almeida-8a1790176/?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app">Rodolfo de Almeida Santos</p>
-      <td align="center">
-      <p><a href="https://www.linkedin.com/in/rodolfo-almeida-8a1790176/?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app">Tulio Bitencourt de Paiva</p>
+      <p>Jean Luca Reis da Silva</p>
     </td>
+    <td align="center">
+      <p>Mateus Augusto de Paula Tostes</p>
+    </td>
+    <td align="center">
+      <p>Matheus Monteiro Satiro</p>
+    </td>
+    <td align="center">
+      <img src="imagens/Rodolfo.jpg" alt="Rodolfo" style="width: 100px; height: auto;">
+      <p>Rodolfo de Almeida Santos</p>
+      
   </tr>
 </table>
 
@@ -79,12 +84,12 @@ Ao acessar a aplicação, é possível obter informações relacionadas ao ender
 <table>
   <tr>
     <td align="center">
-      <p>André Luiz Zamponi Ribeiro</p>
+      <p>Dener Pedro da Silva Palma</p>
     </td>
   </tr>
 </table>
 
 **Universidade/Cursos**
 
-- [UNIVESP - Universidade do Vale do Paraíba](https://univesp.br/)
+- [UNIVESP - Universidade Virtual do Estado de São Paulo](https://univesp.br/)
 - Cursos: Ciência de Dados, Engenharia de Computação
